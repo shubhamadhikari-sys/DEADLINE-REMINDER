@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeadlineTracker - Never Miss a Due Date</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 25%, #d946ef 50%, #ec4899 75%, #f43f5e 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%);
+            animation: moveBackground 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes moveBackground {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 40px;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            margin-bottom: 30px;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(139, 92, 246, 0.15), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .header-subtitle {
+            color: #666;
+            font-size: 1em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+        }
+
+        .add-task-card {
+            grid-column: 1 / -1;
+        }
+
+        h2 {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-family: inherit;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+            transform: translateY(-2px);
+            background: white;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 15px 35px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            color: white;
+            width: 100%;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(139, 92, 246, 0.6);
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-microsoft {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            font-size: 0.9em;
+            padding: 12px 20px;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-microsoft:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.6);
+        }
+
+        .tasks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .task-item {
+            background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+            padding: 25px;
+            border-radius: 20px;
+            border-left: 6px solid #8b5cf6;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.15);
+            overflow: hidden;
+        }
+
+        .task-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .task-item:hover {
+            transform: translateX(10px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(139, 92, 246, 0.25);
+            border-left-color: #d946ef;
+        }
+
+        .task-item:hover::before {
+            opacity: 1;
+        }
+
+        .task-item.urgent {
+            border-left-color: #f43f5e;
+            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 5px 20px rgba(244, 63, 94, 0.4); }
+            50% { box-shadow: 0 5px 30px rgba(244, 63, 94, 0.6); }
+        }
+
+        .task-item.warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .task-type {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 25px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #d946ef);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+            position: relative;
+            z-index: 1;
+        }
+
+        .task-details {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .task-deadline {
+            font-weight: 600;
+            color: #f43f5e;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.85em;
+        }
+
+        .btn-complete {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-complete:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #f43f5e, #e11d48);
+            color: white;
+            box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3);
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            box-shadow: 0 6px 20px rgba(244, 63, 94, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.25), transparent);
+            transition: all 0.6s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 50px rgba(139, 92, 246, 0.6);
+        }
+
+        .stat-card:hover::before {
+            top: -100%;
+            right: -100%;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: 700;
+            margin-bottom: 5px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+            font-weight: 500;
+        }
+
+        .microsoft-integration {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            padding: 25px;
+            border-radius: 20px;
+            margin-top: 25px;
+            border: 3px solid #3b82f6;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .microsoft-integration::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.2), transparent);
+            border-radius: 50%;
+        }
+
+        .microsoft-logo {
+            color: #3b82f6;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .integration-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .task-item {
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
+            padding: 20px 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(139, 92, 246, 0.4);
+            z-index: 1000;
+            display: none;
+            min-width: 320px;
+            border-left: 6px solid #8b5cf6;
+            backdrop-filter: blur(10px);
+        }
+
+        .notification.show {
+            display: block;
+            animation: slideInRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .integration-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 DeadlineTracker</h1>
+            <p class="header-subtitle">Stay on top of your assignments and never miss a deadline again!</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTasks">0</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="urgentTasks">0</div>
+                <div class="stat-label">Urgent (< 3 days)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedTasks">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card add-task-card">
+                <h2>➕ Add New Task</h2>
+                <form id="taskForm">
+                    <div class="form-group">
+                        <label for="taskTitle">Task Title *</label>
+                        <input type="text" id="taskTitle" placeholder="e.g., Data Structures Assignment" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="taskType">Type *</label>
+                            <select id="taskType" required>
+                                <option value="">Select type...</option>
+                                <option value="Assignment">Assignment</option>
+                                <option value="Project">Project</option>
+                                <option value="Lab Work">Lab Work</option>
+                                <option value="Presentation">Presentation</option>
+                                <option value="Exam">Exam</option>
+                                <option value="Quiz">Quiz</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="taskDeadline">Deadline *</label>
+                            <input type="datetime-local" id="taskDeadline" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskSubject">Subject/Course</label>
+                        <input type="text" id="taskSubject" placeholder="e.g., Computer Science 101">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea id="taskDescription" placeholder="Add any additional details..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <span>➕</span> Add Task
+                    </button>
+                </form>
+
+                <div class="microsoft-integration">
+                    <div class="microsoft-logo">
+                        <span style="font-size: 1.5em;">🔷</span>
+                        <span>Microsoft Integration</span>
+                    </div>
+                    <p style="color: #666; margin-bottom: 15px; font-size: 0.9em;">Sync your tasks with Microsoft services</p>
+                    <div class="integration-buttons">
+                        <button class="btn btn-microsoft" onclick="addToOutlook()">
+                            📧 Add to Outlook Calendar
+                        </button>
+                        <button class="btn btn-microsoft" onclick="addToTodo()">
+                            ✅ Add to Microsoft To Do
+                        </button>
+                        <button class="btn btn-microsoft" onclick="addToTeams()">
+                            👥 Share on Teams
+                        </button>
+                        <button class="btn btn-microsoft" onclick="addToOneNote()">
+                            📝 Save to OneNote
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 Active Tasks</h2>
+                <div class="tasks-list" id="tasksList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>No tasks yet. Add your first assignment or project!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>✅ Completed Tasks</h2>
+                <div class="tasks-list" id="completedList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎉</div>
+                        <p>Complete tasks will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let tasks = [];
+        let completedTasksList = [];
+
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function calculateDaysUntil(deadline) {
+            const now = new Date();
+            const deadlineDate = new Date(deadline);
+            const diff = deadlineDate - now;
+            const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+            return days;
+        }
+
+        function getTaskUrgency(deadline) {
+            const days = calculateDaysUntil(deadline);
+            if (days < 0) return 'overdue';
+            if (days <= 2) return 'urgent';
+            if (days <= 5) return 'warning';
+            return 'normal';
+        }
+
+        function formatDeadline(deadline) {
+            const date = new Date(deadline);
+            const days = calculateDaysUntil(deadline);
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
+            if (days < 0) return `⚠️ OVERDUE - ${dateStr}`;
+            if (days === 0) return `🔥 DUE TODAY - ${dateStr}`;
+            if (days === 1) return `⏰ DUE TOMORROW - ${dateStr}`;
+            return `📅 Due in ${days} days - ${dateStr}`;
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            const completedList = document.getElementById('completedList');
+            
+            if (tasks.length === 0) {
+                tasksList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No tasks yet. Add your first assignment or project!</p></div>';
+            } else {
+                tasksList.innerHTML = tasks.map((task, index) => `
+                    <div class="task-item ${getTaskUrgency(task.deadline)}">
+                        <div class="task-header">
+                            <div>
+                                <div class="task-title">${task.title}</div>
+                                <span class="task-type">${task.type}</span>
+                            </div>
+                        </div>
+                        <div class="task-details">
+                            ${task.subject ? `<div><strong>Course:</strong> ${task.subject}</div>` : ''}
+                            ${task.description ? `<div><strong>Details:</strong> ${task.description}</div>` : ''}
+                            <div class="task-deadline">${formatDeadline(task.deadline)}</div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn btn-complete btn-small" onclick="completeTask(${index})">✓ Complete</button>
+                            <button class="btn btn-delete btn-small" onclick="deleteTask(${index})">✗ Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (completedTasksList.length === 0) {
+                completedList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎉</div><p>Complete tasks will appear here</p></div>';
+            } else {
+                completedList.innerHTML = completedTasksList.map((task, index) => `
+                    <div class="task-item" style="opacity: 0.7; border-left-color: #27ae60;">
+                        <div class="task-header">
+                            <div>
+                                <div class="task-title">✓ ${task.title}</div>
+                                <span class="task-type" style="background: #27ae60;">${task.type}</span>
+                            </div>
+                        </div>
+                        <div class="task-details">
+                            ${task.subject ? `<div><strong>Course:</strong> ${task.subject}</div>` : ''}
+                            <div style="color: #27ae60; font-weight: 600;">Completed! 🎉</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalTasks').textContent = tasks.length;
+            const urgent = tasks.filter(t => calculateDaysUntil(t.deadline) <= 2).length;
+            document.getElementById('urgentTasks').textContent = urgent;
+            document.getElementById('completedTasks').textContent = completedTasksList.length;
+        }
+
+        function completeTask(index) {
+            const task = tasks[index];
+            completedTasksList.push(task);
+            tasks.splice(index, 1);
+            renderTasks();
+            showNotification('🎉 Task completed! Great job!');
+        }
+
+        function deleteTask(index) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                tasks.splice(index, 1);
+                renderTasks();
+                showNotification('Task deleted');
+            }
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const task = {
+                title: document.getElementById('taskTitle').value,
+                type: document.getElementById('taskType').value,
+                deadline: document.getElementById('taskDeadline').value,
+                subject: document.getElementById('taskSubject').value,
+                description: document.getElementById('taskDescription').value
+            };
+
+            tasks.push(task);
+            tasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            
+            renderTasks();
+            this.reset();
+            showNotification('✅ Task added successfully!');
+        });
+
+        function addToOutlook() {
+            if (tasks.length === 0) {
+                alert('Please add a task first!');
+                return;
+            }
+            const task = tasks[0];
+            const subject = encodeURIComponent(task.title);
+            const body = encodeURIComponent(`Type: ${task.type}\nSubject: ${task.subject}\n\n${task.description}`);
+            const startDate = new Date(task.deadline).toISOString();
+            
+            window.open(`https://outlook.office.com/calendar/0/deeplink/compose?subject=${subject}&body=${body}&startdt=${startDate}`, '_blank');
+            showNotification('📧 Opening Outlook Calendar...');
+        }
+
+        function addToTodo() {
+async function addToTodo() {
+    if (tasks.length === 0) {
+        alert('Please add a task first!');
+        return;
+    }
+
+    const task = tasks[0]; // or choose a specific one
+
+    try {
+        const res = await fetch('/api/todo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: task.title,
+                type: task.type,
+                deadline: task.deadline,
+                subject: task.subject,
+                description: task.description
+            })
+        });
+
+        const data = await res.json();
+        console.log('To Do demo response:', data);
+        showNotification('✅ Microsoft To Do request sent (demo endpoint). Check console.');
+    } catch (err) {
+        console.error(err);
+        showNotification('Failed to send task to Microsoft To Do endpoint');
+    }
+}
+
+    }
+        function addToTeams() {
+            alert('🔷 Microsoft Teams Integration\n\nThis would allow you to:\n• Share tasks with your study group\n• Post deadline reminders in team channels\n• Collaborate on assignments\n\nRequires Teams app and authentication.');
+            showNotification('👥 Teams integration coming soon');
+        }
+
+        function addToOneNote() {
+            alert('🔷 Microsoft OneNote Integration\n\nThis would:\n• Save task details to your OneNote notebook\n• Create dedicated pages for each assignment\n• Sync across all your devices\n\nRequires OneNote and Microsoft authentication.');
+            showNotification('📝 OneNote integration initiated');
+        }
+
+        // Check for urgent tasks on load
+        function checkUrgentTasks() {
+            const urgent = tasks.filter(t => {
+                const days = calculateDaysUntil(t.deadline);
+                return days >= 0 && days <= 2;
+            });
+
+            if (urgent.length > 0) {
+                showNotification(`⚠️ You have ${urgent.length} urgent task(s) due soon!`);
+            }
+        }
+
+        // Initialize
+        renderTasks();
+        setInterval(checkUrgentTasks, 60000); // Check every minute
+        async function completeTask(index) {
+    const task = tasks[index];
+    try {
+        const res = await fetch(`/api/tasks/${task.id}`, { method: 'POST' });
+        // adjust route to /api/tasks/:id/complete if you change the backend accordingly
+    } catch (e) { /* ... */ }
+}
+
+    </script>
+</body>
+</html>
