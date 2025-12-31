@@ -1,3 +1,9 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
 <style>
     :root {
         --bg: #020617;
@@ -694,6 +700,32 @@
     <script>
         let tasks = [];
         let completedTasksList = [];
+        // --- Desktop notification helpers ---
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('This browser does not support desktop notifications');
+        return;
+    }
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then((perm) => {
+            console.log('Notification permission:', perm);
+        });
+    }
+}
+
+function showDesktopNotification(title, body) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const n = new Notification(title, {
+        body,
+        icon: '', // you can add a logo URL here
+    });
+
+    // Auto-close after 8 seconds
+    setTimeout(() => n.close(), 8000);
+}
+
 
         function showNotification(message) {
             const notification = document.getElementById('notification');
@@ -838,18 +870,53 @@
         }
 
         function checkUrgentTasks() {
-            const urgent = tasks.filter(t => {
-                const days = calculateDaysUntil(t.deadline);
-                return days >= 0 && days <= 2;
+           let lastNotifiedTaskIds = new Set();
+
+function checkUrgentTasks() {
+    const now = new Date();
+
+    const urgentSoon = tasks.filter(t => {
+        const deadline = new Date(t.deadline);
+        const diffMs = deadline - now;
+        const diffMinutes = diffMs / (1000 * 60);
+
+        // only future tasks within next 15 minutes
+        return diffMinutes >= 0 && diffMinutes <= 15;
+    });
+
+    if (urgentSoon.length > 0) {
+        // In-app banner
+        showNotification(`⏰ You have ${urgentSoon.length} task(s) due in the next 15 minutes!`);
+
+        urgentSoon.forEach(task => {
+            if (lastNotifiedTaskIds.has(task.title + task.deadline)) return;
+
+            const when = new Date(task.deadline).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
             });
+
+            showDesktopNotification(
+                'Upcoming deadline',
+                `${task.title} (${task.type}) is due at ${when}`
+            );
+
+            lastNotifiedTaskIds.add(task.title + task.deadline);
+        });
+    }
+}
+
 
             if (urgent.length > 0) {
                 showNotification(`⚠️ You have ${urgent.length} urgent task(s) due soon!`);
             }
         }
+// Initialize
+renderTasks();
+requestNotificationPermission();   // ask once at start
+checkUrgentTasks();                // initial check
+setInterval(checkUrgentTasks, 60000); // check every minute
 
-        renderTasks();
-        setInterval(checkUrgentTasks, 60000);
     </script>
 </body>
 </html>
